@@ -912,11 +912,11 @@ function EstadiosPanel({ stickers, currentTeam, darkMode, toggleSticker, justPas
             const s2 = stickers[i * 2 + 1];
             return (
               <div key={s1.code} className="col-span-2 flex gap-1">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <Sticker sticker={s1} currentTeam={currentTeam} onToggle={toggleSticker}
                     darkMode={darkMode} justPasted={justPastedCode===s1.code} highlighted={highlightCode===s1.code} />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <Sticker sticker={s2} currentTeam={currentTeam} onToggle={toggleSticker}
                     darkMode={darkMode} justPasted={justPastedCode===s2.code} highlighted={highlightCode===s2.code} />
                 </div>
@@ -934,11 +934,11 @@ function EstadiosPanel({ stickers, currentTeam, darkMode, toggleSticker, justPas
             const s2 = stickers[i * 2 + 1];
             return (
               <div key={s1.code} className="col-span-2 flex gap-2">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <Sticker sticker={s1} currentTeam={currentTeam} onToggle={toggleSticker}
                     darkMode={darkMode} justPasted={justPastedCode===s1.code} highlighted={highlightCode===s1.code} />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <Sticker sticker={s2} currentTeam={currentTeam} onToggle={toggleSticker}
                     darkMode={darkMode} justPasted={justPastedCode===s2.code} highlighted={highlightCode===s2.code} />
                 </div>
@@ -955,11 +955,11 @@ function EstadiosPanel({ stickers, currentTeam, darkMode, toggleSticker, justPas
             const s2 = stickers[half + i * 2 + 1];
             return (
               <div key={s1.code} className="col-span-2 flex gap-2">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <Sticker sticker={s1} currentTeam={currentTeam} onToggle={toggleSticker}
                     darkMode={darkMode} justPasted={justPastedCode===s1.code} highlighted={highlightCode===s1.code} />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <Sticker sticker={s2} currentTeam={currentTeam} onToggle={toggleSticker}
                     darkMode={darkMode} justPasted={justPastedCode===s2.code} highlighted={highlightCode===s2.code} />
                 </div>
@@ -1172,7 +1172,7 @@ function Sticker({ sticker, onToggle, currentTeam, darkMode = false, justPasted 
     <button
       onClick={() => onToggle(sticker.code)}
       style={paniniStyle}
-      className={`relative border-2 rounded-xl sm:rounded-2xl p-2 sm:p-4 w-full flex items-center justify-center text-center transition active:opacity-60 aspect-[2/3] ${getBgClass()} ${sticker.completed || sticker.repeated ? 'border-[4px] scale-[1.02]' : (isBrillanteSticker ? 'border-2' : 'border-2')} ${animClass}`}
+      className={`relative border-2 rounded-xl sm:rounded-2xl p-2 sm:p-4 w-full flex items-center justify-center text-center transition active:opacity-60 aspect-[2/3] overflow-hidden ${getBgClass()} ${sticker.completed || sticker.repeated ? 'border-[4px] scale-[1.02]' : (isBrillanteSticker ? 'border-2' : 'border-2')} ${animClass}`}
     >
       {isPlayerSticker && (
         <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style={svgStyle}>
