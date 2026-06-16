@@ -45,7 +45,7 @@
 
       const transpile = (source, filename) => Babel.transform(source, {
         filename,
-        presets: ['react', 'typescript'],
+        presets: [['react', { runtime: 'classic' }], 'typescript'],
         sourceType: 'module'
       }).code;
 
