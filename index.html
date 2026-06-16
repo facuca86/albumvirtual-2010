@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Panini Album Virtual 2022</title>
+    <title>Panini Album Virtual Sudáfrica 2010</title>
     <style>
       body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#f3f4f6; }
       #root { min-height: 100vh; }
@@ -49,38 +49,38 @@
         sourceType: 'module'
       }).code;
 
-      const firebaseSrc = await fetch('./firebase_2022.js').then(r => r.text());
+      const firebaseSrc = await fetch('./firebase_RSA2010.js').then(r => r.text());
       const firebasePatched = firebaseSrc
         .replace(/from\s+['"]firebase\/app['"]/g,       `from '${firebaseAppUrl}'`)
         .replace(/from\s+['"]firebase\/firestore['"]/g, `from '${firebaseFirestoreUrl}'`);
       const firebaseUrl = makeModuleUrl(firebasePatched);
 
-      const playerNamesSrc = await fetch('./playerNames_2022.js').then(r => r.text());
+      const playerNamesSrc = await fetch('./playerNames_RSA2010.js').then(r => r.text());
       const playerNamesUrl = makeModuleUrl(playerNamesSrc);
 
-      const teamThemesSrc = await fetch('./teamThemes_2022.js').then(r => r.text());
+      const teamThemesSrc = await fetch('./teamThemes_RSA2010.js').then(r => r.text());
       const teamThemesUrl = makeModuleUrl(teamThemesSrc);
 
-      const albumConfigSrc = await fetch('./albumConfig_2022.js').then(r => r.text());
+      const albumConfigSrc = await fetch('./albumConfig_RSA2010.js').then(r => r.text());
       const albumConfigUrl = makeModuleUrl(albumConfigSrc);
 
-      const appSrc = await fetch('./panini_virtual_album_2022_app.jsx').then(r => r.text());
+      const appSrc = await fetch('./panini_virtual_album_rsa2010_app.jsx').then(r => r.text());
       const appPatched = appSrc
-        .replace(/from\s+['"]react['"]/g,                          `from '${reactUrl}'`)
-        .replace(/from\s+['"]firebase\/firestore['"]/g,            `from '${firebaseFirestoreUrl}'`)
-        .replace(/from\s+['"]\.\/firebase_2022['"]/g,              `from '${firebaseUrl}'`)
-        .replace(/from\s+['"]\.\/playerNames_2022(?:\.js)?['"]/g,  `from '${playerNamesUrl}'`)
-        .replace(/from\s+['"]\.\/teamThemes_2022(?:\.js)?['"]/g,   `from '${teamThemesUrl}'`)
-        .replace(/from\s+['"]\.\/albumConfig_2022(?:\.js)?['"]/g,  `from '${albumConfigUrl}'`);
-      const appUrl = makeModuleUrl(transpile(appPatched, 'panini_virtual_album_2022_app.jsx'));
+        .replace(/from\s+['"]react['"]/g,                                    `from '${reactUrl}'`)
+        .replace(/from\s+['"]firebase\/firestore['"]/g,                      `from '${firebaseFirestoreUrl}'`)
+        .replace(/from\s+['"]\.\/firebase_RSA2010['"]/g,                     `from '${firebaseUrl}'`)
+        .replace(/from\s+['"]\.\/playerNames_RSA2010(?:\.js)?['"]/g,         `from '${playerNamesUrl}'`)
+        .replace(/from\s+['"]\.\/teamThemes_RSA2010(?:\.js)?['"]/g,          `from '${teamThemesUrl}'`)
+        .replace(/from\s+['"]\.\/albumConfig_RSA2010(?:\.js)?['"]/g,         `from '${albumConfigUrl}'`);
+      const appUrl = makeModuleUrl(transpile(appPatched, 'panini_virtual_album_rsa2010_app.jsx'));
 
-      const [{ default: PaniniAlbum2022 }, { createRoot }, React] = await Promise.all([
+      const [{ default: PaniniAlbumRSA2010 }, { createRoot }, React] = await Promise.all([
         import(appUrl),
         import(reactDomUrl),
         import(reactUrl)
       ]);
 
-      createRoot(document.getElementById('root')).render(React.createElement(PaniniAlbum2022));
+      createRoot(document.getElementById('root')).render(React.createElement(PaniniAlbumRSA2010));
     </script>
   </body>
 </html>
