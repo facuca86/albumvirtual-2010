@@ -38,7 +38,7 @@ export const albumConfig = {
       ],
     },
     ESTADIOS: {
-      count: 20,
+      count: 24,
       stickers: [
         { code: 'EST1',  label: 'Cape Town · Green Point Stadium',         repetidasLabel: 'EST1',  type: 'estadio', horizontal: false, pair: true },
         { code: 'EST2',  label: 'Cape Town · Green Point Stadium',         repetidasLabel: 'EST2',  type: 'estadio', horizontal: false, pair: true },
@@ -60,11 +60,6 @@ export const albumConfig = {
         { code: 'EST18', label: 'Rustenburg · Royal Bafokeng Stadium',     repetidasLabel: 'EST18', type: 'estadio', horizontal: false, pair: true },
         { code: 'EST19', label: 'Pretoria · Loftus Versfeld Stadium',      repetidasLabel: 'EST19', type: 'estadio', horizontal: false, pair: true },
         { code: 'EST20', label: 'Pretoria · Loftus Versfeld Stadium',      repetidasLabel: 'EST20', type: 'estadio', horizontal: false, pair: true },
-      ],
-    },
-    EXTRAS: {
-      count: 4,
-      stickers: [
         { code: 'EXTRA1', label: 'Eslogan Oficial', repetidasLabel: 'EXTRA1', type: 'extra',     horizontal: false },
         { code: 'EXTRA2', label: 'Poster Oficial',  repetidasLabel: 'EXTRA2', type: 'extra',     horizontal: false },
         { code: 'EXTRA3', label: 'Poster Oficial',  repetidasLabel: 'EXTRA3', type: 'extra',     horizontal: false },
@@ -81,9 +76,8 @@ export const albumConfig = {
 
   // ── Temas visuales de secciones especiales ────────────────────────────────────
   sectionThemes: {
-    INTRO:    { themeKey: 'INTRO_RSA2010',    solidBg: null,            innerPanel: 'bg-[#3d0f04]' },
+    INTRO:    { themeKey: 'INTRO_RSA2010',    solidBg: null,            innerPanel: 'bg-[#3d1a00]' },
     ESTADIOS: { themeKey: 'ESTADIOS_RSA2010', solidBg: 'bg-[#1a4a1a]',  innerPanel: 'bg-[#0d2a0d]' },
-    EXTRAS:   { themeKey: 'EXTRAS_RSA2010',   solidBg: null,            innerPanel: 'bg-[#3d1a00]' },
     FINAL:    { themeKey: 'FINAL_RSA2010',    solidBg: null,            innerPanel: 'bg-[#3d2200]' },
   },
 
@@ -91,7 +85,6 @@ export const albumConfig = {
   searchConfig: {
     INTRO:    { teamName: 'Intro',    teamFlag: '🏆' },
     ESTADIOS: { teamName: 'Estadios', teamFlag: '🏟️' },
-    EXTRAS:   { teamName: 'Extras',   teamFlag: '🎭' },
     FINAL:    { teamName: 'Final',    teamFlag: '🏆' },
   },
 
@@ -100,8 +93,7 @@ export const albumConfig = {
     { key: 'INTRO_SPECIAL', emoji: '⭐', name: 'PANINI + FIFA',  fixedCodes: ['PANINI', 'FIFA'] },
     { key: 'INTRO',         emoji: '🏆', name: 'INTRO',          codePrefix: 'INTRO', codeStart: 1, count: 5 },
     { key: '__TEAMS__' },
-    { key: 'ESTADIOS',      emoji: '🏟️', name: 'ESTADIOS',       codePrefix: 'EST',   codeStart: 1, count: 20 },
-    { key: 'EXTRAS',        emoji: '🎭', name: 'EXTRAS',          codePrefix: 'EXTRA', codeStart: 1, count: 4 },
+    { key: 'ESTADIOS', emoji: '🏟️', name: 'ESTADIOS', fixedCodes: ['EST1','EST2','EST3','EST4','EST5','EST6','EST7','EST8','EST9','EST10','EST11','EST12','EST13','EST14','EST15','EST16','EST17','EST18','EST19','EST20','EXTRA1','EXTRA2','EXTRA3','EXTRA4'] },
     { key: 'FINAL',         emoji: '🏆', name: 'FINAL',           fixedCodes: ['FINAL1'] },
   ],
 
@@ -121,7 +113,6 @@ export const albumConfig = {
   teamData: {
     INTRO:    { name: 'Intro',     federation: 'Opening Section',              flag: '🏆' },
     ESTADIOS: { name: 'Estadios',  federation: 'Estadios Sudáfrica 2010',      flag: '🏟️' },
-    EXTRAS:   { name: 'Extras',    federation: 'Colección Especial',           flag: '🎭' },
     FINAL:    { name: 'Final',     federation: 'Copa del Mundo 2010',          flag: '🏆' },
 
     RSA: { name: 'Sudáfrica',       federation: 'South African Football Association',          flag: '🇿🇦' },
@@ -210,7 +201,7 @@ export const albumConfig = {
 
 // Orden completo de navegación del álbum
 albumConfig.teams = [
-  'INTRO', 'ESTADIOS', 'EXTRAS',
+  'INTRO', 'ESTADIOS',
   ...albumConfig.competingTeams,
   'FINAL',
 ];

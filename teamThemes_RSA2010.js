@@ -51,8 +51,8 @@ export const teamThemes = {
   CHI: { gradient: "from-red-600 via-white to-blue-700" },
 
   // Secciones especiales
-  INTRO_RSA2010:    { gradient: "from-orange-700 via-yellow-500 to-orange-600", dark: true },
+  INTRO_RSA2010:    { gradient: "from-orange-600 via-amber-200 to-orange-500",  dark: true },
   ESTADIOS_RSA2010: { gradient: "from-green-800 via-orange-500 to-green-700",   dark: true },
-  EXTRAS_RSA2010:   { gradient: "from-orange-600 via-amber-200 to-orange-500",  dark: true },
+  EXTRAS_RSA2010:   { gradient: "from-orange-700 via-yellow-500 to-orange-600", dark: true },
   FINAL_RSA2010:    { gradient: "from-yellow-600 via-yellow-400 to-yellow-700", dark: true },
 };
