@@ -81,9 +81,9 @@ export const albumConfig = {
 
   // ── Temas visuales de secciones especiales ────────────────────────────────────
   sectionThemes: {
-    INTRO:    { themeKey: 'INTRO_RSA2010',    solidBg: null,            innerPanel: 'bg-[#3d0f04]' },
+    INTRO:    { themeKey: 'INTRO_RSA2010',    solidBg: null,            innerPanel: 'bg-[#3d1a00]' },
     ESTADIOS: { themeKey: 'ESTADIOS_RSA2010', solidBg: 'bg-[#1a4a1a]',  innerPanel: 'bg-[#0d2a0d]' },
-    EXTRAS:   { themeKey: 'EXTRAS_RSA2010',   solidBg: null,            innerPanel: 'bg-[#3d1a00]' },
+    EXTRAS:   { themeKey: 'EXTRAS_RSA2010',   solidBg: null,            innerPanel: 'bg-[#3d0f04]' },
     FINAL:    { themeKey: 'FINAL_RSA2010',    solidBg: null,            innerPanel: 'bg-[#3d2200]' },
   },
 
