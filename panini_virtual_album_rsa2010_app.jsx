@@ -649,12 +649,6 @@ export default function PaniniAlbumRSA2010() {
                 ESTADIOS
               </button>
 
-              <button onClick={() => { setCurrentTeamIndex(teams.indexOf('EXTRAS')); setCurrentView('album'); }}
-                className="rounded-2xl p-4 font-black text-2xl sm:text-3xl active:scale-95 transition-transform"
-                style={{ backgroundColor: '#D6491F', color: '#F8E4B3' }}>
-                EXTRAS
-              </button>
-
               {Object.entries(groups).map(([letter, group]) => (
                 <button key={letter}
                   onClick={() => { setCurrentTeamIndex(teams.indexOf(group.teams[0])); setCurrentView('album'); }}
@@ -838,9 +832,6 @@ function AlbumPage({ currentTeam, currentTeamInfo, stickers, stickerCount, curre
         ) : currentTeam === 'ESTADIOS' ? (
           <EstadiosPanel stickers={stickers} currentTeam={currentTeam}
             darkMode={darkMode} toggleSticker={toggleSticker} justPastedCode={justPastedCode} highlightCode={highlightCode} />
-        ) : currentTeam === 'EXTRAS' ? (
-          <ExtrasPanel stickers={stickers} currentTeam={currentTeam}
-            darkMode={darkMode} toggleSticker={toggleSticker} justPastedCode={justPastedCode} highlightCode={highlightCode} />
         ) : currentTeam === 'FINAL' ? (
           <FinalPanel stickers={stickers} currentTeam={currentTeam}
             darkMode={darkMode} toggleSticker={toggleSticker} justPastedCode={justPastedCode} highlightCode={highlightCode} />
@@ -966,44 +957,6 @@ function EstadiosPanel({ stickers, currentTeam, darkMode, toggleSticker, justPas
               </div>
             );
           })}
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ── Extras Panel ──────────────────────────────────────────────────────────────
-function ExtrasPanel({ stickers, currentTeam, darkMode, toggleSticker, justPastedCode, highlightCode }) {
-  const bgClass = getInnerPanelClass(currentTeam, darkMode);
-  return (
-    <>
-      {/* Mobile */}
-      <div className={`lg:hidden col-span-2 p-3 ${bgClass}`}>
-        <div className="text-2xl font-black uppercase text-white mb-3">EXTRAS</div>
-        <div className="grid grid-cols-4 gap-2">
-          {stickers.map(s => (
-            <Sticker key={s.code} sticker={s} currentTeam={currentTeam} onToggle={toggleSticker}
-              darkMode={darkMode} justPasted={justPastedCode===s.code} highlighted={highlightCode===s.code} />
-          ))}
-        </div>
-      </div>
-      {/* Desktop izquierda */}
-      <div className={`hidden lg:block p-8 border-r transition-colors duration-300 ${darkMode?'border-[#6b2010]':'border-slate-300'} ${bgClass}`}>
-        <div className="text-4xl font-black uppercase text-white mb-6">EXTRAS</div>
-        <div className="grid grid-cols-4 gap-4">
-          {stickers.slice(0, 2).map(s => (
-            <Sticker key={s.code} sticker={s} currentTeam={currentTeam} onToggle={toggleSticker}
-              darkMode={darkMode} justPasted={justPastedCode===s.code} highlighted={highlightCode===s.code} />
-          ))}
-        </div>
-      </div>
-      {/* Desktop derecha */}
-      <div className={`hidden lg:block p-8 ${bgClass}`}>
-        <div className="grid grid-cols-4 gap-4">
-          {stickers.slice(2).map(s => (
-            <Sticker key={s.code} sticker={s} currentTeam={currentTeam} onToggle={toggleSticker}
-              darkMode={darkMode} justPasted={justPastedCode===s.code} highlighted={highlightCode===s.code} />
-          ))}
         </div>
       </div>
     </>
