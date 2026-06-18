@@ -563,7 +563,7 @@ export default function PaniniAlbumRSA2010() {
               className={`rounded-3xl p-8 shadow-xl text-left active:scale-95 transition-colors duration-300 ${darkMode ? 'bg-[#6b2010] text-[#F8E4B3]' : 'bg-white'}`}>
               <div className="text-3xl font-black italic uppercase">Estadísticas</div>
             </button>
-            <button onClick={() => setCurrentView('repetidas')} className={`rounded-3xl p-8 shadow-xl text-left active:scale-95 transition-colors duration-300 ${darkMode ? 'bg-[#6b2010] text-[#F8E4B3]' : 'bg-white'}`}>
+            <button onClick={() => setCurrentView('repetidas')} className={`rounded-3xl p-6 text-left font-black text-lg cursor-pointer transition-all hover:scale-105 active:scale-95 shadow-lg ${darkMode ? 'bg-[#6b2010] text-[#F8E4B3]' : 'bg-white'}`}>
               🔁<br/>
               <span className="text-2xl">REPETIDAS</span><br/>
               <span className="text-sm font-medium opacity-70">Gestioná tus figuritas repetidas</span>
@@ -575,8 +575,8 @@ export default function PaniniAlbumRSA2010() {
           </div>
         )}
 
-        {/* REPETIDAS INTERACTIVO */}
-        {currentView === 'repetidas' && (() => {
+      {/* REPETIDAS INTERACTIVO */}
+      {currentView === 'repetidas' && (() => {
         const repetidasGrouped = (() => {
           const byTeam = {};
           for (const [code, value] of Object.entries(completed)) {
