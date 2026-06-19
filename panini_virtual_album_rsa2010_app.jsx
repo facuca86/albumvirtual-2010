@@ -482,7 +482,7 @@ export default function PaniniAlbumRSA2010() {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-4 flex flex-row gap-2 justify-between items-center">
           <div className="min-w-0">
             <h1 className={`text-lg sm:text-3xl font-black italic truncate ${darkMode ? 'text-[#F8E4B3]' : ''}`}>
-              {albumConfig.title}
+              🇿🇦 {albumConfig.title}
             </h1>
             <p className={`hidden sm:block text-xs uppercase tracking-[0.3em] ${darkMode ? 'text-amber-300' : 'text-slate-500'}`}>
               {albumConfig.subtitle}
