@@ -59,7 +59,7 @@ const PROYECTOS = [
     label: 'Mundial 2026',
     url: 'https://facuca86.github.io/albumvirtual/',
     style: 'multicolor',
-    totalStickers: 981,
+    totalStickers: 980,
   },
   {
     id: 'paniniWorldCup2022',
