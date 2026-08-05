@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { db, doc, getDoc, setDoc, onSnapshot } from './firebase_RSA2010';
+import { db, doc, getDoc, setDoc, onSnapshot, arrayUnion } from './firebase_RSA2010';
 import { playerNames } from './playerNames_RSA2010';
 import { teamThemes } from './teamThemes_RSA2010';
 import { albumConfig, codeToNumber, numberToCode } from './albumConfig_RSA2010';
 
-const LOCAL_STORAGE_KEY      = `${albumConfig.id}_stickers`;
-const LOCAL_STORAGE_DARK_KEY = `${albumConfig.id}_darkMode`;
+const LOCAL_STORAGE_KEY         = `${albumConfig.id}_stickers`;
+const LOCAL_STORAGE_DARK_KEY    = `${albumConfig.id}_darkMode`;
+const LOCAL_STORAGE_HISTORY_KEY = `${albumConfig.id}_progressHistory`;
 
 const ALBUM_OWNER    = albumConfig.owner;
 const VIEW_PARAM     = new URLSearchParams(window.location.search).get('view');
@@ -16,8 +17,41 @@ const teamData   = albumConfig.teamData;
 const teamGroups = albumConfig.teamGroups;
 const groups     = albumConfig.groups;
 
-const progressDocRef = db ? doc(db, 'albumProgress', albumConfig.id) : null;
-const settingsDocRef = db ? doc(db, 'albumSettings', albumConfig.id) : null;
+const progressDocRef        = db ? doc(db, 'albumProgress', albumConfig.id) : null;
+const settingsDocRef        = db ? doc(db, 'albumSettings', albumConfig.id) : null;
+const progressHistoryDocRef = db ? doc(db, 'albumProgressHistory', albumConfig.id) : null;
+
+const formatDateTime = (date) => {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+// Entradas guardadas antes de que existieran id/timestamp (versión previa de handleMarkProgress)
+// reciben acá un id/timestamp derivado, de forma determinística, para no perderlas al mergear.
+const parseDateLabel = (label) => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})$/.exec(label || '');
+  if (!m) return null;
+  const [, d, mo, y, h, mi] = m;
+  return new Date(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi)).getTime();
+};
+
+const normalizeHistoryEntry = (entry) => {
+  if (!entry || (entry.id && entry.timestamp)) return entry;
+  return {
+    ...entry,
+    id: entry.id ?? `legacy-${entry.dateLabel}-${entry.completedCount}-${entry.remainingCount}`,
+    timestamp: entry.timestamp ?? parseDateLabel(entry.dateLabel) ?? 0,
+  };
+};
+
+const mergeHistoryEntries = (...lists) => {
+  const byId = new Map();
+  for (const raw of lists.flat()) {
+    const entry = normalizeHistoryEntry(raw);
+    if (entry && entry.id) byId.set(entry.id, entry);
+  }
+  return [...byId.values()].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+};
 
 const PROYECTOS = [
   {
@@ -25,42 +59,49 @@ const PROYECTOS = [
     label: 'Mundial 2026',
     url: 'https://facuca86.github.io/albumvirtual/',
     style: 'multicolor',
+    totalStickers: 981,
   },
   {
     id: 'paniniWorldCup2022',
     label: 'Mundial 2022 · Qatar',
     url: 'https://facuca86.github.io/albumvirtual-2022/',
     style: 'qatar',
+    totalStickers: 638,
   },
   {
     id: 'paniniCWC2025',
     label: 'Club World Cup 2025',
     url: 'https://facuca86.github.io/albumvirtual-cwc25/',
     style: 'cwc',
+    totalStickers: 550,
   },
   {
     id: 'paniniRussia2018',
     label: 'Mundial 2018 · Rusia',
     url: 'https://facuca86.github.io/albumvirtual-2018/',
     style: 'russia',
+    totalStickers: 670,
   },
   {
     id: 'paniniBrazil2014',
     label: 'Mundial 2014 · Brasil',
     url: 'https://facuca86.github.io/albumvirtual-2014/',
     style: 'brazil2014',
+    totalStickers: 640,
   },
   {
     id: 'paniniSouthAfrica2010',
     label: 'Mundial 2010 · Sudáfrica',
     url: 'https://facuca86.github.io/albumvirtual-2010/',
     style: 'southafrica2010',
+    totalStickers: 640,
   },
   {
     id: 'paniniGermany2006',
     label: 'Mundial 2006 · Alemania',
     url: 'https://facuca86.github.io/albumvirtual-2006/',
     style: 'germany2006',
+    totalStickers: 597,
   },
 ];
 
@@ -152,6 +193,7 @@ function getTeamForCode(code) {
 
 export default function PaniniAlbumRSA2010() {
   if (VIEW_PARAM === 'repetidas') return <RepeatidasView />;
+  if (VIEW_PARAM === 'faltan') return <FaltanView />;
 
   const [currentView, setCurrentView]           = useState('home');
   const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
@@ -169,6 +211,10 @@ export default function PaniniAlbumRSA2010() {
   const [repetidasSelected, setRepetidasSelected] = useState(new Set());
   const [repetidasPending, setRepetidasPending] = useState([]);
   const [repetidasConfirmSelected, setRepetidasConfirmSelected] = useState(false);
+  const [progressHistory, setProgressHistory]   = useState([]);
+  const [showProgressHistory, setShowProgressHistory] = useState(false);
+  const [progressMessage, setProgressMessage]   = useState('');
+  const [otrosProyectosProgress, setOtrosProyectosProgress] = useState({});
 
   // ── Load progress ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -222,6 +268,78 @@ export default function PaniniAlbumRSA2010() {
     };
     loadDarkMode();
   }, []);
+
+  // ── Load progress history ─────────────────────────────────────────────────
+  useEffect(() => {
+    const loadHistory = async () => {
+      let localEntries = [];
+      try {
+        const localData = localStorage.getItem(LOCAL_STORAGE_HISTORY_KEY);
+        if (localData) {
+          const parsed = JSON.parse(localData);
+          if (Array.isArray(parsed)) localEntries = parsed;
+        }
+      } catch (_) {}
+
+      let remoteEntries = null;
+      try {
+        if (progressHistoryDocRef) {
+          const snap = await getDoc(progressHistoryDocRef);
+          if (snap.exists() && Array.isArray(snap.data()?.entries)) {
+            remoteEntries = snap.data().entries;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading progress history from Firestore:', error);
+      }
+
+      if (remoteEntries === null) {
+        setProgressHistory(localEntries.map(normalizeHistoryEntry));
+        return;
+      }
+
+      const merged = mergeHistoryEntries(localEntries, remoteEntries);
+      setProgressHistory(merged);
+      try { localStorage.setItem(LOCAL_STORAGE_HISTORY_KEY, JSON.stringify(merged)); } catch (_) {}
+
+      const remoteIds = new Set(remoteEntries.map(e => normalizeHistoryEntry(e).id));
+      const missingFromCloud = merged.filter(e => !remoteIds.has(e.id));
+      if (missingFromCloud.length > 0 && progressHistoryDocRef) {
+        try { await setDoc(progressHistoryDocRef, { entries: arrayUnion(...missingFromCloud) }, { merge: true }); } catch (_) {}
+      }
+    };
+    loadHistory();
+  }, []);
+
+  // ── Load progress of other projects (Otros Proyectos) ─────────────────────
+  useEffect(() => {
+    if (currentView !== 'otros-proyectos' || !db) return;
+    let cancelled = false;
+    const fetchProgress = async () => {
+      const progressData = {};
+      for (const proyecto of proyectosFiltrados) {
+        try {
+          const snap = await getDoc(doc(db, 'albumProgress', proyecto.id));
+          if (snap.exists()) {
+            const stickers = snap.data()?.stickers || {};
+            const pegadas = Object.values(stickers).filter(v => v === true || v === 'repeated').length;
+            progressData[proyecto.id] = {
+              pegadas,
+              total: proyecto.totalStickers,
+              pct: Math.round((pegadas / proyecto.totalStickers) * 100),
+            };
+          } else {
+            progressData[proyecto.id] = null;
+          }
+        } catch (_) {
+          progressData[proyecto.id] = null;
+        }
+      }
+      if (!cancelled) setOtrosProyectosProgress(progressData);
+    };
+    fetchProgress();
+    return () => { cancelled = true; };
+  }, [currentView]);
 
   // ── Save progress ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -368,7 +486,40 @@ export default function PaniniAlbumRSA2010() {
   const completedCount    = Object.entries(completed).filter(([c,v]) => !c.startsWith(albumConfig.promoCodePrefix) && isCompletedSticker(v)).length;
   const repeatedCount     = Object.values(completed).filter(isRepeatedSticker).length;
   const completionPercent = Math.round((completedCount / TOTAL_STICKERS) * 100);
+  const remainingPercent  = 100 - completionPercent;
   const remainingCount    = Math.max(TOTAL_STICKERS - completedCount, 0);
+
+  const faltantesGrouped = useMemo(() => {
+    const byTeam = {};
+    for (const team of teams) {
+      const missing = getTeamCodes(team).filter((code) => !isCompletedSticker(completed[code]));
+      if (missing.length) byTeam[team] = missing;
+    }
+    return teams.filter(t => byTeam[t]).map(t => ({ team: t, info: teamData[t], codes: byTeam[t] }));
+  }, [completed]);
+
+  const handleMarkProgress = async () => {
+    const now = new Date();
+    const entry = {
+      id: `${now.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+      timestamp: now.getTime(),
+      dateLabel: formatDateTime(now),
+      percentCompleted: completionPercent,
+      percentRemaining: remainingPercent,
+      completedCount,
+      remainingCount,
+    };
+    const nextHistory = [...progressHistory, entry];
+    setProgressHistory(nextHistory);
+    try { localStorage.setItem(LOCAL_STORAGE_HISTORY_KEY, JSON.stringify(nextHistory)); } catch (_) {}
+    try {
+      if (progressHistoryDocRef) await setDoc(progressHistoryDocRef, { entries: arrayUnion(entry) }, { merge: true });
+    } catch (error) {
+      console.error('Error saving progress history to Firestore:', error);
+    }
+    setProgressMessage('✅ Progreso marcado');
+    setTimeout(() => setProgressMessage(''), 2000);
+  };
 
   const selectionTeams = albumConfig.competingTeams;
 
@@ -568,6 +719,10 @@ export default function PaniniAlbumRSA2010() {
               <span className="text-2xl">REPETIDAS</span><br/>
               <span className="text-sm font-medium opacity-70">Gestioná tus figuritas repetidas</span>
             </button>
+            <button onClick={() => setCurrentView('faltan')}
+              className={`rounded-3xl p-8 shadow-xl text-left active:scale-95 transition-colors duration-300 ${darkMode ? 'bg-[#6b2010] text-[#F8E4B3]' : 'bg-white'}`}>
+              <div className="text-3xl font-black italic uppercase">Me Faltan</div>
+            </button>
             <button onClick={() => setCurrentView('otros-proyectos')}
               className={`rounded-3xl p-8 shadow-xl text-left active:scale-95 transition-colors duration-300 ${darkMode ? 'bg-[#6b2010] text-[#F8E4B3]' : 'bg-white'}`}>
               <div className="text-3xl font-black italic uppercase">Otros Proyectos</div>
@@ -694,22 +849,105 @@ export default function PaniniAlbumRSA2010() {
         );
       })()}
 
+      {/* ME FALTAN (solo lectura) */}
+      {currentView === 'faltan' && (
+        <div className={`rounded-3xl p-6 sm:p-8 shadow-xl max-w-2xl mx-auto transition-colors duration-300 ${darkMode ? 'bg-[#6b2010] text-white' : 'bg-white'}`}>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-black italic uppercase">Me Faltan</h2>
+              <div className={`text-sm font-black mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{remainingCount} figuritas faltantes</div>
+            </div>
+          </div>
+          {faltantesGrouped.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-4xl mb-3">🏆</div>
+              <div className="font-black text-xl">¡Álbum completo!</div>
+              <div className={`mt-2 text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Ya tenés todas las figuritas.</div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {faltantesGrouped.map(({ team, info, codes }) => (
+                <div key={team} className={`rounded-2xl p-4 ${darkMode ? 'bg-black/20' : 'bg-slate-50'}`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-2xl leading-none">{info?.flag || '🏳️'}</span>
+                    <div>
+                      <div className="font-black uppercase text-sm">{info?.name || team}</div>
+                      <div className={`text-[10px] uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-400'}`}>{codes.length} falta{codes.length !== 1 ? 'n' : ''}</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {codes.map(code => {
+                      const name = getPlayerNameForCode(code);
+                      const num  = codeToNumber[code];
+                      const label = num !== undefined ? `#${num}` : code;
+                      return (
+                        <span key={code} className="text-xs font-black px-3 py-1.5 rounded-xl bg-slate-500 text-white">
+                          {label}{name !== code ? ` · ${name}` : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button onClick={() => setCurrentView('home')} className={`px-6 py-3 rounded-2xl font-black ${darkMode ? 'bg-slate-700 text-white' : 'bg-gray-200 text-gray-800'}`}>
+              ← VOLVER
+            </button>
+          </div>
+        </div>
+      )}
+
         {/* OTROS PROYECTOS */}
         {currentView === 'otros-proyectos' && (
           <div className={`rounded-3xl p-6 sm:p-8 shadow-xl max-w-2xl mx-auto transition-colors duration-300 ${darkMode ? 'bg-[#6b2010] text-[#F8E4B3]' : 'bg-white'}`}>
             <h2 className="text-3xl font-black italic uppercase mb-6">Otros Proyectos</h2>
             <div className="flex flex-col gap-6">
-              {proyectosFiltrados.map(proyecto => (
-                <button
-                  key={proyecto.id}
-                  onClick={() => { window.location.href = proyecto.url; }}
-                  style={getProyectoStyle(proyecto.style)}
-                  className="rounded-3xl p-8 shadow-xl text-left active:scale-95 transition-transform w-full font-black"
-                >
-                  <div className="text-3xl font-black italic uppercase">{proyecto.label}</div>
-                </button>
-              ))}
+              {proyectosFiltrados.map(proyecto => {
+                const progress = otrosProyectosProgress[proyecto.id];
+                return (
+                  <button
+                    key={proyecto.id}
+                    onClick={() => { window.location.href = proyecto.url; }}
+                    style={getProyectoStyle(proyecto.style)}
+                    className="rounded-3xl p-8 shadow-xl text-left active:scale-95 transition-transform w-full font-black"
+                  >
+                    <div className="text-3xl font-black italic uppercase">{proyecto.label}</div>
+                    {progress === undefined ? (
+                      <div style={{ marginTop: 6 }}>
+                        <div style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', overflow: 'hidden' }} />
+                        <div style={{ fontSize: 11, marginTop: 3, opacity: 0.7, textAlign: 'right' }}>cargando...</div>
+                      </div>
+                    ) : progress && (
+                      <div style={{ marginTop: 6 }}>
+                        <div style={{ height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${progress.pct}%`, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 2, transition: 'width 0.6s ease' }} />
+                        </div>
+                        <div style={{ fontSize: 11, marginTop: 3, opacity: 0.85, textAlign: 'right' }}>
+                          {progress.pct}% · {progress.pegadas} pegadas
+                        </div>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+            {(() => {
+              const entries = Object.values(otrosProyectosProgress).filter(Boolean);
+              if (entries.length === 0) return null;
+              const totalPegadas = entries.reduce((sum, p) => sum + p.pegadas, 0);
+              const totalFaltantes = entries.reduce((sum, p) => sum + (p.total - p.pegadas), 0);
+              const totalStickersOtros = proyectosFiltrados
+                .filter(p => otrosProyectosProgress[p.id])
+                .reduce((sum, p) => sum + p.totalStickers, 0);
+              const promedio = totalStickersOtros > 0 ? Math.round((totalPegadas / totalStickersOtros) * 100) : 0;
+              return (
+                <div className={`mt-6 px-4 py-2.5 rounded-xl text-xs leading-relaxed ${darkMode ? 'bg-white/5 text-white/70' : 'bg-black/5 text-slate-600'}`}>
+                  * Colección completa · {promedio}% promedio · {totalPegadas.toLocaleString()} figuritas pegadas · {totalFaltantes.toLocaleString()} faltantes
+                </div>
+              );
+            })()}
             <button
               onClick={() => setCurrentView('home')}
               className={`mt-6 px-6 py-3 rounded-2xl font-black transition-colors duration-300 ${darkMode ? 'bg-[#3d0f04] text-[#F8E4B3]' : 'bg-gray-200 text-gray-800'}`}
@@ -879,11 +1117,24 @@ export default function PaniniAlbumRSA2010() {
             <div className={`mt-4 pt-4 border-t ${darkMode ? 'border-[#3d0f04]' : 'border-slate-200'} flex flex-wrap gap-3`}>
               <button onClick={() => { setShowStats(false); setCurrentView('stats-selections'); }}
                 className="bg-amber-700 text-white px-6 py-3 rounded-2xl font-black">Estadísticas Selecciones</button>
+              <button onClick={handleMarkProgress}
+                className="bg-purple-600 text-white px-6 py-3 rounded-2xl font-black">Marcar Progreso</button>
+              <button onClick={() => { setShowStats(false); setShowProgressHistory(true); }}
+                className="bg-orange-500 text-white px-6 py-3 rounded-2xl font-black">Ver Progreso</button>
+              {progressMessage && <span className="w-full text-green-400 font-black">{progressMessage}</span>}
               <button onClick={() => setShowStats(false)}
                 className={`px-6 py-3 rounded-2xl font-black ${darkMode ? 'bg-[#3d0f04] text-[#F8E4B3]' : 'bg-slate-300 text-slate-800'}`}>Cerrar</button>
             </div>
           </div>
         </div>
+      )}
+
+      {showProgressHistory && (
+        <ProgressHistoryModal
+          history={progressHistory}
+          darkMode={darkMode}
+          onClose={() => setShowProgressHistory(false)}
+        />
       )}
 
       {showQR      && <QRModal onClose={() => setShowQR(false)} />}
@@ -1304,6 +1555,63 @@ function QRModal({ onClose }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ProgressHistoryModal
+// ═══════════════════════════════════════════════════════════════════════════════
+function ProgressHistoryModal({ history, darkMode, onClose }) {
+  const rows = [...history].sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+      <div className={`rounded-3xl p-6 sm:p-8 shadow-2xl w-full max-w-2xl transition-colors duration-300 ${darkMode ? 'bg-[#6b2010] text-[#F8E4B3]' : 'bg-white'}`}>
+        <h3 className="text-2xl font-black italic uppercase mb-6">Ver Progreso</h3>
+        {rows.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-4xl mb-3">📊</div>
+            <div className="font-black text-xl">Todavía no hay registros de progreso</div>
+            <div className={`mt-2 text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Usá "Marcar Progreso" para guardar una foto de tu avance.
+            </div>
+          </div>
+        ) : (
+          <div className="max-h-[60vh] overflow-auto rounded-2xl border border-slate-300/30">
+            <table className="w-full text-sm">
+              <thead className={`sticky top-0 ${darkMode ? 'bg-[#3d0f04]' : 'bg-slate-100'}`}>
+                <tr className="text-left font-black uppercase text-xs">
+                  <th className="px-3 py-2">Fecha</th>
+                  <th className="px-3 py-2">Hora</th>
+                  <th className="px-3 py-2 text-right">% Completado</th>
+                  <th className="px-3 py-2 text-right">% Faltante</th>
+                  <th className="px-3 py-2 text-right">Pegadas</th>
+                  <th className="px-3 py-2 text-right">Faltantes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((entry) => {
+                  const [fecha, hora] = (entry.dateLabel || '').split(' ');
+                  return (
+                    <tr key={entry.id ?? entry.dateLabel} className={`border-t ${darkMode ? 'border-[#3d0f04]' : 'border-slate-200'}`}>
+                      <td className="px-3 py-2 font-black whitespace-nowrap">{fecha}</td>
+                      <td className="px-3 py-2 whitespace-nowrap">{hora}</td>
+                      <td className="px-3 py-2 text-right">{entry.percentCompleted}%</td>
+                      <td className="px-3 py-2 text-right">{entry.percentRemaining}%</td>
+                      <td className="px-3 py-2 text-right">{entry.completedCount}</td>
+                      <td className="px-3 py-2 text-right">{entry.remainingCount}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button onClick={onClose}
+            className={`px-6 py-3 rounded-2xl font-black ${darkMode ? 'bg-[#3d0f04] text-[#F8E4B3]' : 'bg-slate-300 text-slate-800'}`}>Cerrar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // RepeatidasView
 // ═══════════════════════════════════════════════════════════════════════════════
 function getPlayerNameForCode(code) {
@@ -1399,6 +1707,95 @@ function RepeatidasView() {
               <div>
                 <div className="font-black uppercase text-sm text-slate-800">{info?.name||team}</div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider">{codes.length} repetida{codes.length!==1?'s':''}</div>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {codes.map(code => {
+                const name = getPlayerNameForCode(code);
+                const num  = codeToNumber[code];
+                const label = num !== undefined ? `#${num}` : code;
+                return (
+                  <span key={code} className="bg-slate-500 text-white text-xs font-black px-2.5 py-1 rounded-lg">
+                    {label}{name !== code ? ` · ${name}` : ''}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </main>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FaltanView
+// ═══════════════════════════════════════════════════════════════════════════════
+function FaltanView() {
+  const [stickerData, setStickerData] = useState(null);
+
+  useEffect(() => {
+    const loadFromLocal = () => {
+      try {
+        const local = localStorage.getItem(LOCAL_STORAGE_KEY);
+        setStickerData(local ? JSON.parse(local) : {});
+      } catch { setStickerData({}); }
+    };
+
+    const load = async () => {
+      try {
+        if (progressDocRef) {
+          const snap = await getDoc(progressDocRef);
+          if (snap.exists()) { setStickerData(snap.data()?.stickers || {}); return; }
+        }
+        loadFromLocal();
+      } catch { loadFromLocal(); }
+    };
+    load();
+  }, []);
+
+  const isCompletedSticker = (v) => v === true || v === 'repeated';
+
+  const grouped = useMemo(() => {
+    if (!stickerData) return [];
+    const byTeam = {};
+    for (const team of teams) {
+      const missing = getTeamCodes(team).filter((code) => !isCompletedSticker(stickerData[code]));
+      if (missing.length) byTeam[team] = missing;
+    }
+    return teams.filter(t => byTeam[t]).map(t => ({ team: t, info: teamData[t], codes: byTeam[t] }));
+  }, [stickerData]);
+
+  if (!stickerData) {
+    return (
+      <div className="min-h-screen bg-[#D6491F] flex items-center justify-center">
+        <div className="text-white font-black text-xl">Cargando...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#D6491F]">
+      <header className="bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-2xl mx-auto px-4 py-3">
+          <h1 className="text-lg font-black italic uppercase text-slate-800">Figuritas que le faltan a {ALBUM_OWNER}</h1>
+          <p className="text-[10px] text-slate-400 uppercase tracking-widest">{albumConfig.repetidasSubtitle}</p>
+        </div>
+      </header>
+      <main className="max-w-2xl mx-auto px-4 py-5 space-y-3">
+        {grouped.length === 0 ? (
+          <div className="bg-white rounded-3xl p-8 text-center text-slate-800">
+            <div className="text-4xl mb-3">🏆</div>
+            <div className="font-black text-xl">¡Álbum completo!</div>
+            <div className="text-slate-500 mt-2 text-sm">Ya tiene todas las figuritas.</div>
+          </div>
+        ) : grouped.map(({ team, info, codes }) => (
+          <div key={team} className="bg-white rounded-2xl p-4 shadow">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl leading-none">{info?.flag||'🏳️'}</span>
+              <div>
+                <div className="font-black uppercase text-sm text-slate-800">{info?.name||team}</div>
+                <div className="text-[10px] text-slate-400 uppercase tracking-wider">{codes.length} falta{codes.length!==1?'n':''}</div>
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5">
